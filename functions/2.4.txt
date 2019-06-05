@@ -1,0 +1,28 @@
+create or replace function courseInSemester2_4()
+	returns table(cs_code character(7), cs_title character(100),active_currently character(3)) as
+$$
+begin 
+	return query 
+	(select c.course_code,c.course_title,'маи'::character(3) 
+	from "CourseRun" cr JOIN "Course" c USING(course_code)
+	 where amka_prof1 is not null and semesterrunsin= (select s.semester_id
+		   								   from "Semester" s
+										   where s.semester_status='present'))
+	union 
+		(SELECT tab.course_code,tab.course_title,'ови'::character(3)
+		FROM (SELECT course_code,course_title
+				FROM "Course" 
+				WHERE typical_season= (select s.academic_season
+		   								   from "Semester" s
+										   where s.semester_status='present')
+				EXCEPT 
+				SELECT course_code,course_title
+				FROM "Course" c JOIN "CourseRun" USING (course_code)
+				WHERE amka_prof1 is not null and semesterrunsin= (select s.semester_id
+		   								   from "Semester" s
+										   where s.semester_status='present')) AS tab);
+	
+	
+end;
+$$
+language 'plpgsql' volatile;

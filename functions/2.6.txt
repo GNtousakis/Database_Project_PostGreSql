@@ -1,0 +1,33 @@
+﻿CREATE OR REPLACE FUNCTION search_sector2_6()
+	RETURNS TABLE(sector_name character(100)) AS
+$$	
+DECLARE
+meg integer;
+BEGIN
+	
+	SELECT SUM(athrisma) INTO meg
+	FROM  "Lab" l FULL OUTER JOIN  (SELECT p."labJoins",(COUNT(p."labJoins")) as "athrisma"
+									FROM "Diploma" d JOIN "Professor" p ON (d.amka_super=p.amka) 
+									GROUP BY p."labJoins" ) AS "maxim" ON (maxim."labJoins"=l.lab_code)
+	GROUP BY (sector_code)
+	ORDER BY SUM(athrisma) desc
+	LIMIT 1	;
+				
+		
+		
+	RETURN QUERY
+	SELECT sector_title
+	FROM 	(SELECT sector_code,SUM(athrisma)
+			FROM  "Lab" l FULL OUTER JOIN  (SELECT p."labJoins",(COUNT(p."labJoins")) as "athrisma"
+										FROM "Diploma" d JOIN "Professor" p ON (d.amka_super=p.amka) 
+										GROUP BY p."labJoins" ) AS "maxim" ON (maxim."labJoins"=l.lab_code)
+			GROUP BY (sector_code)
+			ORDER BY SUM(athrisma) desc)AS "tel_sig"  FULL OUTER JOIN "Sector" s ON (s.sector_code=tel_sig.sector_code)
+	WHERE sum =	meg;				
+						
+	
+	
+	
+end;
+$$
+language 'plpgsql' volatile;	

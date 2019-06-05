@@ -1,0 +1,23 @@
+CREATE OR REPLACE FUNCTION  grades_result_trig3_2()
+	RETURNS trigger AS
+$$
+BEGIN 
+	PERFORM  insert_grade1_2();
+	UPDATE "Register"
+	SET register_status= CASE WHEN (final_grade>=5)  THEN 'pass'::register_status_type
+		ELSE 'fail'::register_status_type
+	END;
+	RETURN NEW;
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
+****************************************************************************************************
+
+
+
+CREATE TRIGGER examino_monitor	BEFORE UPDATE ON "Semester"
+	FOR EACH ROW
+	WHEN (OLD.semester_status = 'present' AND NEW.semester_status= 'past') 
+	EXECUTE PROCEDURE grades_result_trig();

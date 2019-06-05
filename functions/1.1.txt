@@ -1,0 +1,17 @@
+CREATE OR REPLACE FUNCTION public.create_students(
+	year integer,
+	num integer)
+    RETURNS TABLE(name character, fname character, surname character, email character, am character, edate date) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE 
+    ROWS 1000
+AS $BODY$
+
+BEGIN
+	RETURN QUERY
+	SELECT n.name,g.name,adapt_surname(s.surname,n.sex)::character(30), 'waiting'::character(30),create_am(year,n.id)::character(30),current_date
+	FROM random_names(num) n JOIN random_surnames(num) s USING (id)
+	JOIN random_names_g(num,'M') g USING (id);
+END;

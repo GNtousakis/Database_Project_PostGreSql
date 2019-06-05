@@ -1,0 +1,36 @@
+CREATE OR REPLACE FUNCTION get_Teacher (n interger)
+	RETURN TABLE (name character(30),surname character(30),email character(30)) AS
+$$
+BEGIN 
+	RETURN QUERT
+	SELECT name,surname,email
+	FROM "Professor" p
+	WHERE ( p."labJoins"=n AND p."rank"=lecturer )
+END;	
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+**********************************************
+CREATE OR REPLACE FUNCTION get_Teacher (ccode character(7),ayear integer,aseason  semester_season_type)
+	RETURNS TABLE (name character(30),surname character(30),email character(30)) AS
+$$
+DECLARE
+	semid integer;
+BEGIN 
+
+	SELECT semester_id INTO semid
+	FROM "Semester"
+	WHERE academic_season=aseason AND ayear=academic_year;
+	
+	RETURN QUERY
+	SELECT name,surname,email
+	FROM "Professor"
+	WHERE amka IN ( (SELECT amka_prof1 
+					FROM "CourseRun"
+					WHERE course_code=ccode AND semid=serial_number ) OR (SELECT amka_prof2 
+																			FROM "CourseRun"
+																			WHERE course_code=ccode AND semid=serial_number) ) ;
+
+END;	
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;

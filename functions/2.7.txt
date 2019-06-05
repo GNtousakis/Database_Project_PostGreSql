@@ -1,0 +1,18 @@
+CREATE OR REPLACE FUNCTION mathsig(
+	acyear integer,
+	acseason semester_season_type)
+    RETURNS TABLE(ccode character, ctitle character) 
+
+
+  
+AS
+$$
+BEGIN
+	RETURN QUERY 
+	SELECT c."course_code",c."course_title"
+	FROM "Course" c
+	WHERE (c."typical_year"= acyear 
+		AND c."typical_season" = acseason);
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;

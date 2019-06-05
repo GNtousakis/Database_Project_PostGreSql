@@ -1,0 +1,22 @@
+CREATE OR REPLACE FUNCTION xrostaei(amka_foi integer)
+	RETURNS TABLE (code character(7),name character(100)) AS
+$$
+BEGIN	
+	RETURN QUERY 
+	SELECT c."course_code",c."course_title"
+	FROM "Course" c
+	WHERE 
+		c."obligatory" = true 
+		AND
+		(c."course_code" IN 
+			(
+			SELECT r."course_code"
+			FROM "Register" r
+			WHERE r."register_status" IN ('proposed','requested','approved','rejected','fail')
+				AND amka_foi=r."amka"																										
+																																
+			)
+		);
+END
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;

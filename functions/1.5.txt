@@ -1,0 +1,104 @@
+﻿CREATE OR REPLACE FUNCTION math_prot1_5()
+	RETURNS void AS 
+$$
+BEGIN 
+	INSERT INTO "Register"(amka,serial_number,course_code,register_status)
+	SELECT st.amka, trexon_examino(),cr.course_code,'proposed'
+	FROM (SELECT amka
+		FROM "Student" WHERE amka NOT IN (SELECT amka FROM "Diploma")) AS st --elegxos oti den iparxei to amka ton foititon sto diploma
+		CROSS JOIN
+		(SELECT course_code,serial_number
+		FROM "CourseRun"
+		WHERE semesterrunsin=trexon_examino()) AS cr -- trexon eksamino
+	WHERE	cr.course_code IN (SELECT course_code -- elegxos to mathima na einai proigoumenou h torinoy eksaminou
+								FROM "Course"
+								WHERE typical_year<=etos_foitisis(st.amka)) 
+			AND (cr.course_code NOT IN (SELECT r.course_code  --elegxos to mathima na min to exei perasei
+										FROM "Register" r
+										WHERE st.amka=r.amka AND cr.course_code=r.course_code AND (r.register_status='pass')))
+	ORDER BY st.amka;
+
+
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
+********************************************************************
+
+CREATE OR REPLACE FUNCTION elegxos_math_3_3(amkaf integer,s_nunber integer,mcode character(7)) --ΕΛΕΓΧΩ ΑΝ ΕΙΝΑΙ ΜΙΚΡΟΤΕΡΑ ΤΟΥ 8 ΚΑΙ ΜΙΚΡΟΤΕΡΟ ΤΟΥ 35
+	RETURNS boolean AS
+$$
+BEGIN
+	RETURN ( CASE 
+				WHEN 
+					( ( (SELECT COUNT(serial_number)
+							FROM "Register"
+							WHERE amkaf=amka AND serial_number=s_nunber AND course_code<=mcode AND register_status=('approved' OR 'requested' OR 'proposed'))<=8 )
+					AND 
+					  (	(SELECT SUM(units)
+							FROM "Register" JOIN "Course" USING (course_code)
+							WHERE (amkaf=amka AND serial_number=s_nunber AND course_code<=mcode AND register_status=('approved' OR 'requested' OR 'proposed')))<=35 )
+					)
+			
+				THEN  'true'
+				ELSE  'false'
+				END );
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+**********************************************************************8
+
+CREATE OR REPLACE FUNCTION etos_foitisis(amkaf integer)  -- elegxo se poio etos exei ftasei o foititis
+	RETURNS integer AS 
+$$
+DECLARE
+	yearf integer;
+	yeart integer;
+BEGIN 
+	SELECT EXTRACT(YEAR FROM  s.entry_date) INTO yearf
+	FROM "Student" s
+	WHERE amka=amkaf;
+	
+	SELECT EXTRACT(YEAR FROM  start_date) INTO yeart
+	FROM "Semester"
+	WHERE semester_status='present';
+	
+	RETURN(yeart-yearf);
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+*****************************************************************************8
+
+CREATE OR REPLACE FUNCTION trexon_examino() --girnaei noumero eksaminou (22,23ktl)
+	RETURNS integer AS
+$$
+BEGIN 
+	RETURN(	SELECT semester_id
+			FROM "Semester"
+			WHERE semester_status='present');
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+
+********************************************************************************
+
+CREATE OR REPLACE FUNCTION trexon_season() -- girnaei season winter or spring
+	RETURNS semester_season_type AS
+$$
+BEGIN 
+	RETURN(	SELECT academic_season
+			FROM "Semester"
+			WHERE semester_status='present');
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+*********************************************************************************8
+
+CREATE TRIGGER student_monitor_in BEFORE  INSERT  ON "Register"
+FOR EACH ROW 
+EXECUTE PROCEDURE dilosi_math_update();

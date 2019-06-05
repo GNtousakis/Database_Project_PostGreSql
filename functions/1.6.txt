@@ -1,0 +1,26 @@
+CREATE OR REPLACE FUNCTION eis_future1_6(eksamino integer)
+	RETURNS void AS
+$$
+DECLARE
+semstat semester_status_type;
+BEGIN 
+	SELECT semester_status INTO semstat FROM "Semester" WHERE semester_id=eksamino;
+	IF (semstat='future') THEN 
+	INSERT INTO "CourseRun"
+	SELECT DISTINCT ON (c.course_code) c.course_code,eksamino,c.exam_min,c.lab_min,c.exam_percentage,c.labuses,c.semesterrunsin,c.amka_prof1,c.amka_prof2
+	FROM	("CourseRun" c JOIN (SELECT course_code,typical_season FROM "Course") AS "co" USING (course_code)) 
+	WHERE co.typical_season = (SELECT academic_season FROM "Semester" WHERE semester_id=eksamino) AND (eksamino NOT IN (SELECT serial_number FROM "CourseRun"
+																														WHERE co.course_code=course_code AND serial_number=eksamino )) 
+	ORDER BY c.course_code DESC;
+	ELSE 
+	RAISE EXCEPTION 'Not future semester';
+	END IF;
+	
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
+
+	
+	

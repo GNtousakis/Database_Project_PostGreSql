@@ -1,0 +1,36 @@
+-- FUNCTION: public.get_courses2_10(character)
+
+-- DROP FUNCTION public.get_courses2_10(character);
+
+CREATE OR REPLACE FUNCTION public.get_courses2_10(
+	c_code character)
+    RETURNS TABLE(code character, title character) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE 
+    ROWS 1000
+AS $BODY$
+
+begin
+	return query
+	with recursive Req_rec(code) as (
+	select main as code
+	from "Course_depends" 
+	where dependent=c_code 
+	union
+	select cd.main
+	from "Course_depends" cd, Req_rec r
+	where r.code=cd.dependent
+	)
+	
+	select course_code , course_title
+	from "Course" , Req_rec re
+	where course_code=re.code;
+
+end;
+
+$BODY$;
+
+ALTER FUNCTION public.get_courses2_10(character)
+    OWNER TO postgres;

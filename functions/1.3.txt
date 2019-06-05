@@ -1,0 +1,14 @@
+CREATE OR REPLACE FUNCTION dipl_vath ()
+	RETURNS void AS
+$$
+BEGIN
+	UPDATE "Diploma"
+	SET "thesis_grade"= ( floor(random() * (10-5+1) + 5)::int ),
+	"graduation_date"= (current_date)
+	WHERE
+	"amka" IN (SELECT s."amka"
+			FROM "Student" s
+			WHERE (current_date- s."entry_date")>1825 ) AND "thesis_grade"=NULL ;
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;	

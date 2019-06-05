@@ -1,0 +1,68 @@
+CREATE OR REPLACE FUNCTION get_total_units(samka integer)
+	RETURNS integer AS
+$$
+BEGIN 	
+	RETURN SUM("units")
+	FROM "Course" c
+	WHERE c."course_code" IN (SELECT "course_code"
+							FROM "Register" r
+							WHERE r."register_status"='pass' AND r."amka"= samka );
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+****************************************************
+
+CREATE OR REPLACE FUNCTION get_total_lessons(samka integer)
+	RETURNS integer AS
+$$
+BEGIN 	
+	RETURN (SELECT COUNT("course_code") FROM "Course" c
+										WHERE c."course_code" IN (SELECT "course_code"
+																	FROM "Register" r
+																	WHERE r."register_status"='pass' AND r."amka"= samka 
+																));
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+*****************************************************8
+
+CREATE OR REPLACE FUNCTION number_min_lessons(amkaf integer)
+	RETURNS integer AS
+$$
+DECLARE
+	arithm integer;
+BEGIN
+
+	SELECT left(am,4) INTO arithm
+	FROM "Student" 
+	WHERE amka=amkaf;
+	
+	RETURN	((SELECT g."min_courses" 
+			FROM "Graduation_rules" g
+			WHERE (g."year_rules" = arithm )))+ (SELECT COUNT ("course_code")
+												FROM "Course" c
+												WHERE c."obligatory"='true'); 
+	
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+************************************************************
+
+CREATE OR REPLACE FUNCTION apof()
+	RETURNS TABLE (am character (30)) AS
+$$
+BEGIN 
+	RETURN QUERY 
+	SELECT s.am
+	FROM "Student" s
+	WHERE  (get_total_units(s.amka)>=180)
+		AND get_total_lessons(s.amka)>=number_min_lessons(s.amka)	
+			AND	s.amka IN	(SELECT d.amka
+							FROM "Diploma"	d												
+							WHERE (d.diploma_num 	IS	null)); 
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE; 

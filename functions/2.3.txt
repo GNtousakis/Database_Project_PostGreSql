@@ -1,0 +1,35 @@
+CREATE OR REPLACE FUNCTION public.get_teacher_sem(
+	temprank rank_type,
+	semester integer)
+    RETURNS TABLE(name character, surname character, lab integer) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    IMMUTABLE 
+    ROWS 1000
+AS $BODY$
+
+BEGIN
+	RETURN QUERY
+	SELECT p."name",p."surname",p."labJoins"
+	FROM "Professor" p
+	WHERE	((p."rank"=temprank)
+		AND (	(p."amka" IN	
+				(SELECT amka_prof1
+				FROM 	"CourseRun" c
+				WHERE c."semesterrunsin"= semester
+					)) 
+				OR
+					(p."amka" IN
+					(SELECT amka_prof2
+					FROM 	"CourseRun" c
+					WHERE c."semesterrunsin"= semester
+					))		
+			));
+END;		
+
+$BODY$;
+
+ALTER FUNCTION public.get_teacher_sem(rank_type, integer)
+    OWNER TO postgres;
+

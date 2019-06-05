@@ -1,0 +1,14 @@
+CREATE OR REPLACE FUNCTION fortoserg() 
+	RETURNS TABLE (amka integer,surname character(30),name character(30),totalnumber integer) AS
+$$
+BEGIN
+	RETURN QUERY
+	SELECT l."amka",l."surname",l."name", SUM(lab_hours) as total
+	FROM "LabStuff" l
+	INNER JOIN "Supports" ON "Supports"."amka"= l."amka"
+	INNER JOIN "Course" ON "Supports"."course_code"= "Course"."amka"
+	GROUP BY
+ 	l."amka";
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;	

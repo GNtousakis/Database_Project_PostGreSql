@@ -1,0 +1,102 @@
+/* epistrefei ton teleytaio ari8mo dipl */
+CREATE OR REPLACE FUNCTION last_number_dipl()
+	RETURNS integer AS
+$$
+BEGIN
+	RETURN (SELECT diploma_num
+			FROM "Diploma"
+			WHERE diploma_num IS NOT NULL
+			ORDER BY diploma_num desc
+			LIMIT 1);
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+
+******************************************************************
+
+CREATE OR REPLACE FUNCTION number_min_lessons(amkaf integer)
+	RETURNS integer AS
+$$
+DECLARE
+	arithm integer;
+BEGIN
+
+	SELECT left(am,4) INTO arithm
+	FROM "Student" 
+	WHERE amka=amkaf;
+	
+	RETURN	((SELECT g."min_courses" 
+			FROM "Graduation_rules" g
+			WHERE (g."year_rules" = arithm )))+ (SELECT COUNT ("course_code")
+												FROM "Course" c
+												WHERE c."obligatory"='true'); 
+	
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;	
+
+
+******************************************************************
+CREATE OR REPLACE FUNCTION public.vathmos_diplomatos(
+	amkaf integer)
+    RETURNS numeric AS
+
+$$
+DECLARE 
+	mathip numeric:=0;
+	mathpr numeric:=0;
+	athrismaip numeric:=0;
+	athrismapr numeric:=0;
+
+
+
+BEGIN	
+
+	SELECT SUM(r.final_grade* c.weight),SUM(c.weight) INTO mathip,athrismaip -- vriskoume to athrisma ton ipoxreotikon
+	FROM "Register" r JOIN "Course" c USING (course_code)
+	WHERE amka=amkaf AND register_status='pass' AND course_code IN (SELECT c.course_code
+																	FROM "Course" c
+																	WHERE c.obligatory='true');
+																	
+	SELECT SUM(pinakas.grade),SUM(pinakas.monades)  INTO mathpr,athrismapr -- vriskoume to athrisma ton ipoxreotikon
+	FROM (SELECT (r.final_grade * c.weight) as grade, c.weight as monades
+			FROM "Register" r JOIN "Course" c USING (course_code)
+			WHERE (amka=amkaf) AND register_status='pass' 
+			ORDER BY final_grade DESC
+			LIMIT (get_total_lessons2_8(amkaf)- (SELECT COUNT (c.course_code)
+												FROM "Course" c
+												WHERE c.obligatory='true'))) AS pinakas;	
+												
+
+	
+	
+	
+	RETURN round(((mathip+mathpr)/(athrismaip+athrismapr)),1);
+
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+
+**************************************************************
+
+CREATE OR REPLACE FUNCTION anakiriksi_apof(imer date)
+	RETURNS void AS
+$$
+BEGIN
+	UPDATE "Diploma"
+	SET diploma_grade=(0.2*thesis_grade)+(0.8*vathmos_diplomatos(amka)),graduation_date=imer, diploma_num = nextval('diploma_num')
+	WHERE diploma_num IS NULL AND amka IN (SELECT s.amka
+											FROM "Student" s
+											WHERE s.am IN (select apof2_8()));
+	
+	
+	
+	 
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
+

@@ -1,0 +1,78 @@
+CREATE OR REPLACE FUNCTION elegxos_math_3_3(amkaf integer,s_nunber integer,mcode character(7)) --екецвы ам еимаи лийяотеяа тоу 8 йаи лийяотеяо тоу 35
+	RETURNS boolean AS
+$$
+BEGIN
+	RETURN ( CASE 
+				WHEN 
+					( ( (SELECT COUNT(serial_number)
+							FROM "Register"
+							WHERE amkaf=amka AND serial_number=s_nunber AND course_code<=mcode AND register_status IN('approved','requested','proposed'))<=8 )
+					AND 
+					  (	(SELECT SUM(units)
+							FROM "Register" JOIN "Course" USING (course_code)
+							WHERE (amkaf=amka AND serial_number=s_nunber AND course_code<=mcode AND register_status IN('approved','requested','proposed')))<=35 )
+					)
+			
+				THEN  'true'
+				ELSE  'false'
+				END );
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+
+
+
+
+CREATE OR REPLACE FUNCTION elegxos_proap_3_3(amkaf integer,mcode character(7)) --екецвы ам EXEI пеяасеи пяоапетоулемо
+	RETURNS boolean AS
+$$
+DECLARE 
+	oproapetoumeno character(7);
+	proapetoumeno	course_dependency_mode_type;
+BEGIN 
+
+	SELECT c.main,c.mode  INTO oproapetoumeno,proapetoumeno
+	FROM "Course_depends" c
+	WHERE c.dependent=mcode;
+	
+	RETURN (CASE proapetoumeno
+			WHEN 'recommended' THEN 'true'
+			WHEN 'required'  THEN 
+				(CASE WHEN ((SELECT COUNT (register_status)
+							FROM "Register"
+							WHERE amkaf=amka AND course_code=oproapetoumeno AND register_status='pass')=1)
+				THEN 'true'
+				ELSE 'false'
+				END)
+			END);
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+
+
+
+
+CREATE OR REPLACE FUNCTION dilosi_math_update()
+	RETURNS trigger AS
+$$
+BEGIN
+ 	IF ((elegxos_proap_3_3(NEW.amka,NEW.course_code)='true') 
+	AND (elegxos_math_3_3(NEW.amka,NEW.serial_number,NEW.course_code)='true'))
+	THEN	NEW.register_status='approved';
+			RETURN NEW;		 
+	ELSE 
+			NEW.register_status='rejected';
+			RETURN NEW;
+			
+	END IF;
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
+CREATE TRIGGER student_monitor BEFORE  UPDATE  ON "Register"
+FOR EACH ROW
+WHEN ((OLD.register_status = 'proposed' OR OLD.register_status = 'requested') AND NEW.register_status= 'approved') 
+EXECUTE PROCEDURE dilosi_math_update();

@@ -1,0 +1,96 @@
+ CREATE OR REPLACE FUNCTION elegxos_xronologikis_sinepias(semid integer,season semester_season_type,status semester_status_type) --8A ELEKSOUME AN EINAI SOSTA EISAGOMENO TO KAINOYRGIO EKSAMINO 
+	RETURNS boolean AS																											--XRONOLOGIKA
+$$
+DECLARE
+	proisem semester_season_type;
+	proist	semester_status_type;
+BEGIN 
+	SELECT academic_season INTO proisem FROM "Semester" WHERE Semester_id=(semid-1);
+	SELECT semester_status INTO proist FROM "Semester" WHERE Semester_id=(semid-1);																	
+	IF (proisem!= season) THEN 
+		IF (proist='present' AND status='future') THEN RETURN 'true';
+		ELSIF (proist='future' AND status='future') THEN RETURN 'true';
+		ELSIF (proist='past' AND (status='present' OR status='past')) THEN RETURN 'true';
+		ELSE RETURN 'false';
+		END IF;
+	ELSE RETURN 'false';
+	END IF;
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+*************************************************************************************************************
+
+CREATE OR REPLACE FUNCTION hmer_teleutaio_examino()  --Briskoume pote einai kataxorimeno to teleutaio examino to end_date toy
+	RETURNS date AS
+$$
+BEGIN 
+	RETURN(
+	SELECT end_date
+	FROM "Semester"
+	ORDER BY semester_id desc 
+	LIMIT 1);
+
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;	
+		
+*************************************************************************************************************
+
+CREATE OR REPLACE FUNCTION arithos_present_semester(nseme semester_status_type) --elegxos gia to posa present eksamina 8a exoume
+	RETURNS boolean AS
+$$
+DECLARE
+	ar_present_semester integer;
+BEGIN
+	SELECT  COUNT(semester_id) 
+	INTO ar_present_semester 
+	FROM "Semester" 
+	WHERE semester_status='present';
+	
+	IF (nseme = 'present') THEN 
+	ar_present_semester := ar_present_semester +1;
+	END IF;
+	
+	IF (ar_present_semester=1) THEN
+	RETURN 'true';
+	ELSE
+	RETURN 'false';
+	END IF;
+	
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;		
+
+*****************************************************************************************************
+
+
+CREATE OR REPLACE FUNCTION elegxos_tria_ena()
+	RETURNS trigger AS
+$$
+BEGIN 
+	IF (TG_OP = 'INSERT') THEN 
+		IF ( (NEW.start_date<hmer_teleutaio_examino()) OR (arithos_present_semester(NEW.semester_status)='false')
+			OR (elegxos_xronologikis_sinepias(NEW.semester_id,NEW.academic_season,NEW.semester_status)='false')) THEN
+		RAISE EXCEPTION 'Problem with new semester';
+		ELSE 
+		RETURN NEW;
+		END IF;
+	ELSIF (TG_OP = 'UPDATE') THEN
+		IF ( (arithos_present_semester(NEW.semester_status)='false') 
+			OR (elegxos_xronologikis_sinepias(OLD.semester_id,NEW.academic_season,NEW.semester_status)='false')) THEN 
+		RETURN NULL;
+		ELSE 
+		RETURN NEW;
+		END IF;	
+	END IF;
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+
+
+********************************************************************************************************8
+
+CREATE TRIGGER semester_monitor BEFORE INSERT OR UPDATE ON "Semester"
+FOR EACH ROW EXECUTE PROCEDURE elegxos_tria_ena();

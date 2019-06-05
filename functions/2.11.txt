@@ -1,0 +1,33 @@
+-- FUNCTION: public.get_st2_11()
+
+-- DROP FUNCTION public.get_st2_11();
+
+CREATE OR REPLACE FUNCTION public.get_st2_11(
+	)
+    RETURNS TABLE(am character, name character, surname character) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE 
+    ROWS 1000
+AS $BODY$
+
+begin
+	return query
+	select st."am",st."name",st."surname"
+	from "Student" st
+	where amka in (
+		select amka--,count(course_code)
+		from "Register"
+		where register_status='pass' and course_code in (
+			select course_code 
+			from "Course"
+			where obligatory is true and left(course_code,3)='ΠΛΗ')
+		group by amka
+		having count(course_code)=8);--Σε περίπτωση εισαγωγής ή διαγραφής μαθήματος ΠΛΗ υπωρχρετικο τοτε πρεπει να αλλάξει η συνθήκη
+end;
+
+$BODY$;
+
+ALTER FUNCTION public.get_st2_11()
+    OWNER TO postgres;

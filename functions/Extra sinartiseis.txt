@@ -1,0 +1,63 @@
+CREATE OR REPLACE FUNCTION trexon_examino()
+	RETURNS integer AS
+$$
+BEGIN 
+	RETURN(	SELECT semester_id
+			FROM "Semester"
+			WHERE semester_status='present');
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+
+**************************************************************8
+
+CREATE OR REPLACE FUNCTION trexon_season()
+	RETURNS semester_season_type AS
+$$
+BEGIN 
+	RETURN(	SELECT academic_season
+			FROM "Semester"
+			WHERE semester_status='present');
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+**********************************************************************
+
+CREATE OR REPLACE FUNCTION hmer_teleutaio_examino()  --Briskoume pote einai kataxorimeno to teleutaio examino to end_date toy
+	RETURNS date AS
+$$
+BEGIN 
+	RETURN(
+	SELECT end_date
+	FROM "Semester"
+	ORDER BY semester_id desc 
+	LIMIT 1);
+
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+*********************************************************************
+
+CREATE OR REPLACE FUNCTION etos_foitisis(amkaf integer)
+	RETURNS integer AS 
+$$
+DECLARE
+	yearf integer;
+	yeart integer;
+BEGIN 
+	SELECT EXTRACT(YEAR FROM  s.entry_date) INTO yearf
+	FROM "Student" s
+	WHERE amka=amkaf;
+	
+	SELECT EXTRACT(YEAR FROM  start_date) INTO yeart
+	FROM "Semester"
+	WHERE semester_status='present';
+	
+	RETURN(yeart-yearf+1);
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;	
+

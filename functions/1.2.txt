@@ -1,0 +1,92 @@
+CREATE OR REPLACE FUNCTION public.ret_per_gr(
+	namem character,
+	ar integer)
+    RETURNS numeric  
+AS
+$$
+BEGIN 
+	RETURN	(SELECT exam_percentage
+			FROM "CourseRun"
+			WHERE serial_number=ar AND course_code=namem);
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
+
+
+CREATE OR REPLACE FUNCTION public.eis_vath(
+	)
+    RETURNS void 
+AS 
+$$
+BEGIN 
+
+	UPDATE "Register"
+	SET "lab_grade" = ( floor(random() * (10-1+1) + 1)::int )
+	WHERE "register_status"!='pass' AND 
+										"course_code" IN (	
+														SELECT "course_code"
+														FROM "CourseRun"
+														WHERE semesterrunsin IN ( 
+																				SELECT "semester_id"
+																				FROM "Semester"
+																				WHERE "semester_status"= 'present'
+																				) 
+														) AND 	
+																"course_code" IN (	
+																					SELECT "course_code"
+																					FROM "CourseRun" 
+																					WHERE labuses>0
+																				); 
+																				
+	UPDATE "Register"
+	SET "exam_grade"= ( floor(random() * (10-1+1) + 1)::int )
+	WHERE "register_status"!='pass' AND "course_code" IN (	
+														SELECT "course_code"
+														FROM "CourseRun"
+														WHERE semesterrunsin IN ( 
+																				SELECT "semester_id"
+																				FROM "Semester"
+																				WHERE "semester_status"= 'present'
+																				)
+														);																			
+																				
+	UPDATE "Register"  
+	SET "final_grade"="exam_grade"
+	WHERE "lab_grade" IS null;
+	
+	UPDATE "Register"  
+	SET "final_grade"=0,
+		"exam_grade"=0
+	WHERE	("lab_grade" IS NOT NULL) AND ("course_code","amka") IN	(SELECT cr.Course_code,r.amka
+																	FROM "Register" r JOIN "CourseRun" cr USING (Course_code,serial_number)
+																	WHERE lab_grade<lab_min  AND r.serial_number = ( SELECT "semester_id"
+																															FROM "Semester"
+																															WHERE "semester_status"= 'present'
+																															));
+	
+	UPDATE "Register"  
+	SET "final_grade"="exam_grade"
+	WHERE	("lab_grade" IS NOT NULL) AND ("course_code","amka") IN	(SELECT Course_code,amka
+																	FROM "Register"  JOIN "CourseRun" USING (Course_code,serial_number)
+																	WHERE lab_grade>=lab_min AND exam_grade<exam_min  AND serial_number = ( SELECT "semester_id"
+																															FROM "Semester"
+																															WHERE "semester_status"= 'present'
+																															));
+	UPDATE "Register"  
+	SET "final_grade"=("exam_grade"* ret_per_gr("course_code","serial_number")) + ("lab_grade"* (1-ret_per_gr("course_code","serial_number")))
+	WHERE	("lab_grade" IS NOT NULL) AND ("course_code","amka") IN	(SELECT Course_code,amka
+																	FROM "Register"  JOIN "CourseRun"  USING (Course_code,serial_number)
+																	WHERE lab_grade>=lab_min AND exam_grade>=exam_min  AND serial_number = ( SELECT "semester_id"
+																															FROM "Semester"
+																															WHERE "semester_status"= 'present'
+																															));
+	
+	
+	
+														
+	
+END;
+$$
+LANGUAGE 'plpgsql' VOLATILE;
